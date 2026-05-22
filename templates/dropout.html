@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Dropout Predictor — Nyaka AI{% endblock %}
+{% block page_title %}🎓 Student Dropout Predictor{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h5 class="mb-0">All Students — Risk Overview</h5>
+    <small class="text-muted">Powered by Random Forest ML model trained on Nyaka program data</small>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('dropout.predict') }}" class="btn btn-success">
+      <i class="bi bi-plus-circle me-1"></i>Predict New Student
+    </a>
+    <form method="POST" action="{{ url_for('dropout.run_all') }}">
+      <button class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-repeat me-1"></i>Re-run All
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Filter Tabs -->
+<ul class="nav nav-pills mb-3" id="riskFilter">
+  <li class="nav-item">
+    <a class="nav-link active" href="#" data-filter="all">All ({{ students|length }})</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link text-danger" href="#" data-filter="High">
+      High Risk ({{ students|selectattr('risk_label','eq','High')|list|length }})
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" style="color:#e65100" href="#" data-filter="Medium">
+      Medium ({{ students|selectattr('risk_label','eq','Medium')|list|length }})
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link text-success" href="#" data-filter="Low">
+      Low ({{ students|selectattr('risk_label','eq','Low')|list|length }})
+    </a>
+  </li>
+</ul>
+
+<div class="card stat-card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0" id="studentsTable">
+      <thead class="table-light">
+        <tr>
+          <th>Name</th>
+          <th>Grade</th>
+          <th>School</th>
+          <th>District</th>
+          <th>Attendance</th>
+          <th>Score</th>
+          <th>Distance</th>
+          <th>Risk Score</th>
+          <th>Label</th>
+          <th>SMS Alert</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in students %}
+        <tr data-risk="{{ s.risk_label }}">
+          <td class="fw-semibold">{{ s.name }}</td>
+          <td>{{ s.grade }}</td>
+          <td><small>{{ s.school }}</small></td>
+          <td><small>{{ s.district }}</small></td>
+          <td>
+            <div class="d-flex align-items-center gap-1">
+              <div class="progress flex-grow-1" style="height:6px;min-width:50px">
+                <div class="progress-bar {% if s.attendance_pct < 60 %}bg-danger{% elif s.attendance_pct < 80 %}bg-warning{% else %}bg-success{% endif %}"
+                     style="width:{{ s.attendance_pct }}%"></div>
+              </div>
+              <small>{{ s.attendance_pct }}%</small>
+            </div>
+          </td>
+          <td><small>{{ s.avg_grade_score }}/100</small></td>
+          <td><small>{{ s.distance_km }} km</small></td>
+          <td>
+            <div class="progress" style="height:8px;min-width:60px">
+              <div class="progress-bar {% if s.dropout_risk >= 0.65 %}bg-danger{% elif s.dropout_risk >= 0.35 %}bg-warning{% else %}bg-success{% endif %}"
+                   style="width:{{ (s.dropout_risk * 100)|round(0)|int }}%"></div>
+            </div>
+            <small>{{ (s.dropout_risk * 100)|round(1) }}%</small>
+          </td>
+          <td>
+            <span class="badge badge-{{ s.risk_label|lower }} px-2 py-1 rounded-pill">
+              {{ s.risk_label }}
+            </span>
+          </td>
+          <td>
+            {% if s.grandmother_phone %}
+            <form method="POST" action="{{ url_for('dropout.send_alert', student_id=s.id) }}">
+              <button class="btn btn-sm btn-outline-warning py-0 px-2" title="Alert grandmother via SMS">
+                <i class="bi bi-chat-dots"></i>
+              </button>
+            </form>
+            {% else %}
+            <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.querySelectorAll('[data-filter]').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const filter = btn.dataset.filter;
+    document.querySelectorAll('#studentsTable tbody tr').forEach(row => {
+      row.style.display = (filter === 'all' || row.dataset.risk === filter) ? '' : 'none';
+    });
+  });
+});
+</script>
+{% endblock %}
