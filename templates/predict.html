@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Predict Dropout — Nyaka AI{% endblock %}
+{% block page_title %}🎓 Predict Student Dropout Risk{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+
+    {% if result %}
+    <!-- Result Card -->
+    <div class="card stat-card mb-4 border-{{ result.color }}">
+      <div class="card-body text-center py-4">
+        <div class="display-4 mb-2
+          {% if result.label == 'High' %}text-danger
+          {% elif result.label == 'Medium' %}text-warning
+          {% else %}text-success{% endif %}">
+          {% if result.label == 'High' %}⚠️
+          {% elif result.label == 'Medium' %}🔶
+          {% else %}✅{% endif %}
+        </div>
+        <h3 class="fw-bold risk-{{ result.label|lower }}">{{ result.label }} Dropout Risk</h3>
+        <div class="display-6 fw-bold mb-2">{{ result.percentage }}%</div>
+        <div class="progress mx-auto mb-3" style="height:12px;max-width:300px">
+          <div class="progress-bar bg-{{ result.color }}" style="width:{{ result.percentage }}%"></div>
+        </div>
+        {% if result.risk_factors %}
+        <div class="text-start mt-3">
+          <strong>Key Risk Factors:</strong>
+          <ul class="mt-1">
+            {% for f in result.risk_factors %}
+            <li>{{ f }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+        <a href="{{ url_for('dropout.predict') }}" class="btn btn-outline-secondary mt-2">
+          <i class="bi bi-arrow-left me-1"></i>Predict Another
+        </a>
+        <a href="{{ url_for('dropout.index') }}" class="btn btn-success mt-2">
+          <i class="bi bi-list me-1"></i>View All Students
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Prediction Form -->
+    <div class="card stat-card">
+      <div class="card-body">
+        <h5 class="card-title mb-4"><i class="bi bi-person-plus me-2"></i>Student Information</h5>
+        <form method="POST">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Student Name (optional)</label>
+              <input type="text" name="student_name" class="form-control" placeholder="e.g. Aisha Nakato">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Grade</label>
+              <select name="grade" class="form-select">
+                {% for g in ['P1','P2','P3','P4','P5','P6','P7','S1','S2','S3'] %}
+                <option>{{ g }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">District</label>
+              <select name="district" class="form-select">
+                {% for d in ['Rukungiri','Kanungu','Kihihi','Nyakagyezi'] %}
+                <option>{{ d }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">School</label>
+              <select name="school" class="form-select">
+                <option>Nyaka Primary School</option>
+                <option>Kutamba Primary School</option>
+                <option>Nyaka Secondary School</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Grandmother's Phone (for SMS alerts)</label>
+              <input type="text" name="grandmother_phone" class="form-control" placeholder="+256700000000">
+            </div>
+
+            <div class="col-12"><hr><h6 class="text-muted">Risk Factors</h6></div>
+
+            <div class="col-md-6">
+              <label class="form-label">Attendance Rate (%)</label>
+              <input type="number" name="attendance_pct" class="form-control"
+                     min="0" max="100" value="75" required>
+              <small class="text-muted">% of school days attended</small>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Average Grade Score (0–100)</label>
+              <input type="number" name="avg_grade_score" class="form-control"
+                     min="0" max="100" value="60" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Meals Per Day</label>
+              <select name="meals_per_day" class="form-select">
+                <option value="1">1 meal</option>
+                <option value="1.5">1.5 meals</option>
+                <option value="2" selected>2 meals</option>
+                <option value="3">3 meals</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Distance to School (km)</label>
+              <input type="number" name="distance_km" class="form-control"
+                     min="0" max="30" step="0.1" value="2.0" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Number of Siblings</label>
+              <input type="number" name="num_siblings" class="form-control"
+                     min="0" max="15" value="3" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Has Both Parents?</label>
+              <select name="has_both_parents" class="form-select">
+                <option value="0" selected>No (orphan/vulnerable)</option>
+                <option value="1">Yes</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Caregiver is Grandmother?</label>
+              <select name="caregiver_is_gm" class="form-select">
+                <option value="1" selected>Yes</option>
+                <option value="0">No</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Previous Dropout?</label>
+              <select name="prev_dropout" class="form-select">
+                <option value="0" selected>No</option>
+                <option value="1">Yes</option>
+              </select>
+            </div>
+
+            <div class="col-12 mt-2">
+              <button type="submit" class="btn btn-success btn-lg w-100">
+                <i class="bi bi-cpu me-2"></i>Predict Dropout Risk
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
