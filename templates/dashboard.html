@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Nyaka AI{% endblock %}
+{% block page_title %}📊 Overview Dashboard{% endblock %}
+
+{% block content %}
+<div class="nyaka-header">
+  <h4 class="mb-1"><i class="bi bi-globe-africa me-2"></i>Nyaka Global Organization — AI Platform</h4>
+  <p class="mb-0 opacity-75">Empowering grandmothers and children in SW Uganda through data-driven care.</p>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card p-3 text-center" style="border-left:4px solid #2e7d32">
+      <div class="icon text-success"><i class="bi bi-people-fill"></i></div>
+      <h3 class="fw-bold mb-0">{{ total_students }}</h3>
+      <small class="text-muted">Total Students</small>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card p-3 text-center" style="border-left:4px solid #f9a825">
+      <div class="icon text-warning"><i class="bi bi-person-heart"></i></div>
+      <h3 class="fw-bold mb-0">{{ total_gms }}</h3>
+      <small class="text-muted">Grandmothers</small>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card p-3 text-center" style="border-left:4px solid #c62828">
+      <div class="icon text-danger"><i class="bi bi-exclamation-triangle-fill"></i></div>
+      <h3 class="fw-bold mb-0">{{ high_risk }}</h3>
+      <small class="text-muted">High Dropout Risk</small>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card p-3 text-center" style="border-left:4px solid #c62828">
+      <div class="icon" style="color:#c62828"><i class="bi bi-shield-exclamation"></i></div>
+      <h3 class="fw-bold mb-0">{{ sgbv_new }}</h3>
+      <small class="text-muted">New SGBV Reports</small>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-3 mb-4">
+  <!-- Risk Distribution Donut -->
+  <div class="col-md-4">
+    <div class="card stat-card p-3">
+      <h6 class="fw-semibold mb-3"><i class="bi bi-pie-chart me-1"></i>Dropout Risk Distribution</h6>
+      <canvas id="riskChart" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- School Risk Bar -->
+  <div class="col-md-8">
+    <div class="card stat-card p-3">
+      <h6 class="fw-semibold mb-3"><i class="bi bi-bar-chart me-1"></i>Risk by School</h6>
+      <canvas id="schoolChart" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- At-Risk Students Table -->
+<div class="row g-3 mb-4">
+  <div class="col-md-8">
+    <div class="card stat-card p-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-semibold mb-0"><i class="bi bi-person-x me-1 text-danger"></i>At-Risk Students</h6>
+        <a href="{{ url_for('dropout.index') }}" class="btn btn-sm btn-outline-success">View All</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover">
+          <thead class="table-light">
+            <tr>
+              <th>Name</th><th>School</th><th>Attendance</th><th>Risk</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in at_risk_students %}
+            <tr>
+              <td>{{ s.name }}</td>
+              <td><small>{{ s.school }}</small></td>
+              <td>
+                <div class="progress" style="height:6px;width:80px">
+                  <div class="progress-bar {% if s.attendance_pct < 60 %}bg-danger{% elif s.attendance_pct < 80 %}bg-warning{% else %}bg-success{% endif %}"
+                       style="width:{{ s.attendance_pct }}%"></div>
+                </div>
+                <small>{{ s.attendance_pct }}%</small>
+              </td>
+              <td>
+                <span class="badge badge-{{ s.risk_label|lower }} px-2 py-1 rounded-pill">
+                  {{ s.risk_label }} ({{ (s.dropout_risk * 100)|round(0)|int }}%)
+                </span>
+              </td>
+              <td>
+                <form method="POST" action="{{ url_for('dropout.send_alert', student_id=s.id) }}" class="d-inline">
+                  <button class="btn btn-xs btn-outline-warning btn-sm py-0 px-2" title="SMS Grandmother">
+                    <i class="bi bi-chat-dots"></i>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent SGBV -->
+  <div class="col-md-4">
+    <div class="card stat-card p-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-semibold mb-0"><i class="bi bi-shield-exclamation me-1 text-danger"></i>Recent SGBV Reports</h6>
+        <a href="{{ url_for('sgbv.admin') }}" class="btn btn-sm btn-outline-danger">View All</a>
+      </div>
+      {% if recent_sgbv %}
+        {% for r in recent_sgbv %}
+        <div class="border-bottom pb-2 mb-2">
+          <div class="d-flex justify-content-between">
+            <small class="fw-semibold">{{ r.report_code }}</small>
+            <span class="badge {% if r.status == 'new' %}bg-danger{% elif r.status == 'reviewed' %}bg-warning text-dark{% else %}bg-success{% endif %} rounded-pill">
+              {{ r.status }}
+            </span>
+          </div>
+          <small class="text-muted">{{ r.incident_type }} — {{ r.district }}</small><br>
+          {% if r.urgent %}<span class="badge bg-danger">URGENT</span>{% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted small">No reports yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="card stat-card p-3">
+  <h6 class="fw-semibold mb-3"><i class="bi bi-lightning me-1"></i>Quick Actions</h6>
+  <div class="d-flex flex-wrap gap-2">
+    <a href="{{ url_for('dropout.predict') }}" class="btn btn-success">
+      <i class="bi bi-graph-down-arrow me-1"></i>Predict Dropout
+    </a>
+    <a href="{{ url_for('sgbv.report') }}" class="btn btn-outline-danger" target="_blank">
+      <i class="bi bi-megaphone me-1"></i>SGBV Report Form
+    </a>
+    <a href="{{ url_for('sms.index') }}" class="btn btn-outline-warning">
+      <i class="bi bi-chat-dots me-1"></i>Send SMS Advisory
+    </a>
+    <form method="POST" action="{{ url_for('dropout.run_all') }}" class="d-inline">
+      <button class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-repeat me-1"></i>Re-run All Predictions
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Risk Donut Chart
+new Chart(document.getElementById('riskChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['High Risk', 'Medium Risk', 'Low Risk'],
+    datasets: [{
+      data: [{{ high_risk }}, {{ medium_risk }}, {{ low_risk }}],
+      backgroundColor: ['#c62828', '#e65100', '#2e7d32'],
+      borderWidth: 2,
+    }]
+  },
+  options: {
+    plugins: { legend: { position: 'bottom' } },
+    cutout: '65%',
+  }
+});
+
+// School Risk Bar Chart
+const schoolLabels = {{ school_risk.keys()|list|tojson }};
+const highData   = {{ school_risk.values()|map(attribute='High')|list|tojson }};
+const medData    = {{ school_risk.values()|map(attribute='Medium')|list|tojson }};
+const lowData    = {{ school_risk.values()|map(attribute='Low')|list|tojson }};
+
+new Chart(document.getElementById('schoolChart'), {
+  type: 'bar',
+  data: {
+    labels: schoolLabels,
+    datasets: [
+      { label: 'High',   data: highData,  backgroundColor: '#c62828' },
+      { label: 'Medium', data: medData,   backgroundColor: '#e65100' },
+      { label: 'Low',    data: lowData,   backgroundColor: '#2e7d32' },
+    ]
+  },
+  options: {
+    responsive: true,
+    scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+    plugins: { legend: { position: 'bottom' } },
+  }
+});
+</script>
+{% endblock %}
