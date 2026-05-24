@@ -1,31 +1,21 @@
-"""
-SGBV Anonymous Reporting Routes
-"""
-
 import random
 import string
+import os
 from flask import Blueprint, render_template, request, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from flask_mail import Message
 from models import SGBVReport
-from app import db, mail
-import os
+from extensions import db, mail
 
 sgbv_bp = Blueprint("sgbv", __name__, url_prefix="/sgbv")
 
 INCIDENT_TYPES = [
-    "Sexual Violence",
-    "Physical Violence",
-    "Emotional / Psychological Abuse",
-    "Child Marriage",
-    "Female Genital Mutilation (FGM)",
-    "Neglect / Abandonment",
-    "Economic Abuse",
-    "Other",
+    "Sexual Violence", "Physical Violence", "Emotional / Psychological Abuse",
+    "Child Marriage", "Female Genital Mutilation (FGM)", "Neglect / Abandonment",
+    "Economic Abuse", "Other",
 ]
-
-DISTRICTS = ["Rukungiri", "Kanungu", "Kihihi", "Nyakagyezi", "Other"]
-AGE_RANGES = ["Under 10", "10-14", "15-17", "18-24", "25-34", "35+", "Unknown"]
+DISTRICTS     = ["Rukungiri", "Kanungu", "Kihihi", "Nyakagyezi", "Other"]
+AGE_RANGES    = ["Under 10", "10-14", "15-17", "18-24", "25-34", "35+", "Unknown"]
 RELATIONSHIPS = [
     "Parent / Guardian", "Relative", "Teacher", "Neighbor",
     "Stranger", "Partner / Spouse", "Unknown", "Other"
@@ -33,51 +23,34 @@ RELATIONSHIPS = [
 
 
 def _generate_code():
-    """Generate a random anonymous reference code."""
     return "NYK-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
 
-def _notify_admin(report: SGBVReport):
-    """Email admin about new SGBV report."""
-    admin_email = os.getenv("ADMIN_EMAIL", "admin@nyakaglobal.org")
+def _notify_admin(report):
+    admin_email = os.getenv("ADMIN_EMAIL", "richardsbrennick@gmail.com")
     try:
         msg = Message(
-            subject  = f"[URGENT] New SGBV Report #{report.report_code} - Nyaka AI",
-            sender   = os.getenv("MAIL_USERNAME"),
+            subject    = f"[NYAKA SGBV] New Report {report.report_code}",
+            sender     = os.getenv("MAIL_USERNAME", admin_email),
             recipients = [admin_email],
-            body     = f"""
-A new SGBV report has been submitted anonymously.
-
-Reference Code : {report.report_code}
-Incident Type  : {report.incident_type}
-District       : {report.district}
-Location       : {report.location}
-Victim Age     : {report.victim_age_range}
-Victim Gender  : {report.victim_gender}
-Relationship   : {report.relationship}
-Urgent         : {"YES - IMMEDIATE ACTION REQUIRED" if report.urgent else "No"}
-Submitted At   : {report.submitted_at.strftime("%Y-%m-%d %H:%M UTC")}
-
-Description:
-{report.description}
-
----
-Please log in to the Nyaka AI Dashboard to review and take action.
-This report is stored securely and the reporter's identity is protected.
-            """,
+            body       = (
+                f"Reference: {report.report_code}\n"
+                f"Type: {report.incident_type}\n"
+                f"District: {report.district}\n"
+                f"Urgent: {'YES' if report.urgent else 'No'}\n\n"
+                f"{report.description}"
+            ),
         )
         mail.send(msg)
     except Exception as e:
-        current_app.logger.error(f"Failed to send SGBV admin email: {e}")
+        current_app.logger.error(f"SGBV email failed: {e}")
 
 
-# ── Public: Submit Report ─────────────────────────────────────────────────────
 @sgbv_bp.route("/report", methods=["GET", "POST"])
 def report():
-    """Anonymous SGBV report submission — NO login required."""
     if request.method == "POST":
         code = _generate_code()
-        report = SGBVReport(
+        r = SGBVReport(
             report_code      = code,
             incident_type    = request.form.get("incident_type"),
             description      = request.form.get("description", "").strip(),
@@ -89,25 +62,18 @@ def report():
             urgent           = request.form.get("urgent") == "1",
             status           = "new",
         )
-        db.session.add(report)
+        db.session.add(r)
         db.session.commit()
-        _notify_admin(report)
-        return render_template(
-            "sgbv_submitted.html",
-            code=code,
-            urgent=report.urgent
-        )
+        _notify_admin(r)
+        return render_template("sgbv_submitted.html", code=code, urgent=r.urgent)
 
     return render_template(
         "sgbv_report.html",
-        incident_types = INCIDENT_TYPES,
-        districts      = DISTRICTS,
-        age_ranges     = AGE_RANGES,
-        relationships  = RELATIONSHIPS,
+        incident_types=INCIDENT_TYPES, districts=DISTRICTS,
+        age_ranges=AGE_RANGES, relationships=RELATIONSHIPS,
     )
 
 
-# ── Admin: View Reports ───────────────────────────────────────────────────────
 @sgbv_bp.route("/admin")
 @login_required
 def admin():
@@ -127,10 +93,10 @@ def admin():
 @sgbv_bp.route("/admin/<int:report_id>/update", methods=["POST"])
 @login_required
 def update_report(report_id):
-    report = SGBVReport.query.get_or_404(report_id)
-    report.status      = request.form.get("status", report.status)
-    report.notes       = request.form.get("notes", "").strip()
-    report.reviewed_by = current_user.name
+    r = SGBVReport.query.get_or_404(report_id)
+    r.status      = request.form.get("status", r.status)
+    r.notes       = request.form.get("notes", "").strip()
+    r.reviewed_by = current_user.name
     db.session.commit()
-    flash(f"Report {report.report_code} updated to '{report.status}'.", "success")
+    flash(f"Report {r.report_code} updated.", "success")
     return redirect(url_for("sgbv.admin"))
