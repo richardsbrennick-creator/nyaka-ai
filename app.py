@@ -1,28 +1,12 @@
 """
 NYAKA GLOBAL ORGANIZATION - AI Platform
-========================================
-Features:
-  1. Student Dropout Predictor (ML)
-  2. Free Dashboard (Google OAuth login)
-  3. SGBV Anonymous Reporting
-  4. Grandmother SMS Advisory (Africa's Talking)
 """
-
 import os
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
-from flask_mail import Mail
-from authlib.integrations.flask_client import OAuth
 from dotenv import load_dotenv
+from extensions import db, login_manager, mail, oauth
 
 load_dotenv()
-
-# ── Extensions (created before app so models can import them) ─────────────────
-db            = SQLAlchemy()
-login_manager = LoginManager()
-mail          = Mail()
-oauth         = OAuth()
 
 
 def create_app():
@@ -30,8 +14,6 @@ def create_app():
     app.secret_key = os.getenv("SECRET_KEY", "nyaka-dev-secret-2024")
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///nyaka.db")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-    # Mail config
     app.config["MAIL_SERVER"]   = os.getenv("MAIL_SERVER", "smtp.gmail.com")
     app.config["MAIL_PORT"]     = int(os.getenv("MAIL_PORT", 587))
     app.config["MAIL_USE_TLS"]  = True
@@ -56,6 +38,9 @@ def create_app():
         client_kwargs={"scope": "openid email profile"},
     )
 
+    # Import models so SQLAlchemy knows about them
+    from models import User, Student, Grandmother, SMSLog, SGBVReport  # noqa
+
     # Register blueprints
     from routes.auth      import auth_bp
     from routes.dashboard import dashboard_bp
@@ -69,7 +54,6 @@ def create_app():
     app.register_blueprint(sgbv_bp)
     app.register_blueprint(sms_bp)
 
-    # Create tables and seed data
     with app.app_context():
         db.create_all()
         from utils.seed import seed_sample_data
@@ -78,7 +62,6 @@ def create_app():
     return app
 
 
-# App instance for gunicorn
 app = create_app()
 
 if __name__ == "__main__":
