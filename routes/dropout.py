@@ -3,7 +3,7 @@ from flask_login import login_required
 from models import Student
 from utils.dropout_model import predict_dropout
 from utils.sms_service import send_dropout_alert
-from extensions import db
+from app import db
 
 dropout_bp = Blueprint("dropout", __name__, url_prefix="/dropout")
 
