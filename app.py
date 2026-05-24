@@ -27,7 +27,7 @@ def create_app():
     oauth.init_app(app)
 
     login_manager.login_view = "auth.login"
-    login_manager.login_message = "Please sign in with Google to access the dashboard."
+    login_manager.login_message_category = "warning"
 
     # Google OAuth
     oauth.register(
@@ -58,6 +58,17 @@ def create_app():
         db.create_all()
         from utils.seed import seed_sample_data
         seed_sample_data()
+
+    # Health check — Render uses this to verify the app is running
+    @app.route("/health")
+    def health():
+        return {"status": "ok", "app": "nyaka-ai"}, 200
+
+    # Login page fallback
+    @app.route("/login")
+    def login_page():
+        from flask import render_template
+        return render_template("login.html")
 
     return app
 
