@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template
 from flask_login import login_required
 from models import Student, Grandmother, SGBVReport, SMSLog
-from extensions import db
+from app import db
 from sqlalchemy import func
 
 dashboard_bp = Blueprint("dashboard", __name__)
