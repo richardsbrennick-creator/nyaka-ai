@@ -1,12 +1,22 @@
 """
 NYAKA GLOBAL ORGANIZATION - AI Platform
+All extensions defined here to avoid any module-not-found issues.
 """
 import os
 from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
+from flask_mail import Mail
+from authlib.integrations.flask_client import OAuth
 from dotenv import load_dotenv
-from extensions import db, login_manager, mail, oauth
 
 load_dotenv()
+
+# Extensions — defined at module level so all files can import from here
+db            = SQLAlchemy()
+login_manager = LoginManager()
+mail          = Mail()
+oauth         = OAuth()
 
 
 def create_app():
@@ -20,7 +30,6 @@ def create_app():
     app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
     app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
 
-    # Init extensions
     db.init_app(app)
     login_manager.init_app(app)
     mail.init_app(app)
@@ -29,7 +38,6 @@ def create_app():
     login_manager.login_view = "auth.login"
     login_manager.login_message_category = "warning"
 
-    # Google OAuth
     oauth.register(
         name="google",
         client_id=os.getenv("GOOGLE_CLIENT_ID"),
@@ -38,10 +46,10 @@ def create_app():
         client_kwargs={"scope": "openid email profile"},
     )
 
-    # Import models so SQLAlchemy knows about them
+    # Import models so SQLAlchemy registers them
     from models import User, Student, Grandmother, SMSLog, SGBVReport  # noqa
 
-    # Register blueprints
+    # Blueprints
     from routes.auth      import auth_bp
     from routes.dashboard import dashboard_bp
     from routes.dropout   import dropout_bp
@@ -54,21 +62,14 @@ def create_app():
     app.register_blueprint(sgbv_bp)
     app.register_blueprint(sms_bp)
 
+    @app.route("/health")
+    def health():
+        return {"status": "ok"}, 200
+
     with app.app_context():
         db.create_all()
         from utils.seed import seed_sample_data
         seed_sample_data()
-
-    # Health check — Render uses this to verify the app is running
-    @app.route("/health")
-    def health():
-        return {"status": "ok", "app": "nyaka-ai"}, 200
-
-    # Login page fallback
-    @app.route("/login")
-    def login_page():
-        from flask import render_template
-        return render_template("login.html")
 
     return app
 
