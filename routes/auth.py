@@ -14,27 +14,35 @@ def login():
 
 @auth_bp.route("/callback")
 def callback():
-    token    = oauth.google.authorize_access_token()
-    userinfo = token.get("userinfo")
-    if not userinfo:
-        flash("Google login failed. Please try again.", "danger")
+    try:
+        token    = oauth.google.authorize_access_token()
+        userinfo = token.get("userinfo")
+        if not userinfo:
+            flash("Google login failed — no user info returned.", "danger")
+            return redirect(url_for("auth.login"))
+
+        user = User.query.filter_by(google_id=userinfo["sub"]).first()
+        if not user:
+            user = User(
+                google_id = userinfo["sub"],
+                name      = userinfo.get("name", ""),
+                email     = userinfo.get("email", ""),
+                picture   = userinfo.get("picture", ""),
+                role      = "admin" if userinfo.get("email") == "richardsbrennick@gmail.com" else "staff",
+            )
+            db.session.add(user)
+            db.session.commit()
+
+        login_user(user)
+        flash(f"Welcome, {user.name}!", "success")
         return redirect(url_for("dashboard.index"))
 
-    user = User.query.filter_by(google_id=userinfo["sub"]).first()
-    if not user:
-        user = User(
-            google_id = userinfo["sub"],
-            name      = userinfo.get("name", ""),
-            email     = userinfo.get("email", ""),
-            picture   = userinfo.get("picture", ""),
-            role      = "admin" if userinfo.get("email") == "richardsbrennick@gmail.com" else "staff",
-        )
-        db.session.add(user)
-        db.session.commit()
-
-    login_user(user)
-    flash(f"Welcome, {user.name}!", "success")
-    return redirect(url_for("dashboard.index"))
+    except Exception as e:
+        # Show the actual error so we can debug
+        from flask import current_app
+        current_app.logger.error(f"OAuth callback error: {e}")
+        flash(f"Login error: {str(e)}", "danger")
+        return redirect(url_for("auth.login"))
 
 
 @auth_bp.route("/logout")
