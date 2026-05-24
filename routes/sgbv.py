@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for,
 from flask_login import login_required, current_user
 from flask_mail import Message
 from models import SGBVReport
-from extensions import db, mail
+from app import db, mail
 
 sgbv_bp = Blueprint("sgbv", __name__, url_prefix="/sgbv")
 
