@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for
 from flask_login import login_required
 from models import Grandmother, SMSLog
 from utils.sms_service import send_advisory, broadcast_advisory, send_sms
-from extensions import db
+from app import db
 
 sms_bp = Blueprint("sms", __name__, url_prefix="/sms")
 
