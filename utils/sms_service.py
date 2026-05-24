@@ -86,7 +86,7 @@ def send_sms(phone: str, message: str, category: str = "advisory") -> dict:
 
     Returns dict with status and messageId.
     """
-    from app import db
+    from extensions import db
     from models import SMSLog
 
     log = SMSLog(recipient=phone, message=message, category=category)
