@@ -1,12 +1,7 @@
-"""
-Google OAuth Authentication
-"""
-
 from flask import Blueprint, redirect, url_for, session, flash
 from flask_login import login_user, logout_user, login_required
-from app import db, oauth
+from extensions import db, oauth
 from models import User
-
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -21,7 +16,6 @@ def login():
 def callback():
     token    = oauth.google.authorize_access_token()
     userinfo = token.get("userinfo")
-
     if not userinfo:
         flash("Google login failed. Please try again.", "danger")
         return redirect(url_for("dashboard.index"))
@@ -33,7 +27,7 @@ def callback():
             name      = userinfo.get("name", ""),
             email     = userinfo.get("email", ""),
             picture   = userinfo.get("picture", ""),
-            role      = "admin" if userinfo.get("email") == "admin@nyakaglobal.org" else "staff",
+            role      = "admin" if userinfo.get("email") == "richardsbrennick@gmail.com" else "staff",
         )
         db.session.add(user)
         db.session.commit()
