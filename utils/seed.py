@@ -39,7 +39,7 @@ GM_NAMES = [
 
 def seed_sample_data():
     """Seed DB with sample Nyaka data if empty."""
-    from app import db
+    from extensions import db
     from models import Student, Grandmother
 
     if Student.query.count() > 0:
