@@ -66,6 +66,11 @@ def create_app():
     def health():
         return {"status": "ok"}, 200
 
+    @app.route("/login-page")
+    def login_page():
+        from flask import render_template
+        return render_template("login.html")
+
     with app.app_context():
         db.create_all()
         from utils.seed import seed_sample_data
